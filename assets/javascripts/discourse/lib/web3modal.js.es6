@@ -28,6 +28,7 @@ const Web3Modal = EmberObject.extend({
             const InjectedConnector = window.web3bundle?.wagmi?.InjectedConnector || window.WagmiCore?.InjectedConnector || null;
             if (InjectedConnector) {
                 const injected = new InjectedConnector({ chains, options: { shimDisconnect: true } });
+                console.log("InjectedConnector found", InjectedConnector)
                 connectors = [...connectors, injected];
             }
         } catch (e) {
@@ -60,6 +61,7 @@ const Web3Modal = EmberObject.extend({
 
     async signMessage(account) {
         const address = account.address;
+        console.log("signMessage", account)
         let name, avatar;
         try {
             name = await this.ethereumClient.fetchEnsName({ address });
@@ -93,6 +95,7 @@ const Web3Modal = EmberObject.extend({
     },
 
     async signWithInjected() {
+        console.log("signWithInjected")
         const provider = window.ethereum;
         if (!provider) {
             throw new Error('No injected wallet available');
@@ -105,6 +108,7 @@ const Web3Modal = EmberObject.extend({
         // Request accounts
         const accounts = await provider.request({ method: 'eth_requestAccounts' });
         const address = accounts && accounts[0];
+        console.log({ isRabby, isMetaMask, address })
         if (!address) {
             throw new Error('No account found from injected provider');
         }
@@ -126,11 +130,14 @@ const Web3Modal = EmberObject.extend({
         // Chain ID from provider (hex -> int)
         const chainIdHex = await provider.request({ method: 'eth_chainId' });
         const chain_id = typeof chainIdHex === 'string' ? parseInt(chainIdHex, 16) : chainIdHex;
+        console.log({ chain_id })
 
         // Get SIWE message
         const { message } = await ajax('/discourse-siwe/message', {
             data: { eth_account: address, chain_id }
         }).catch(popupAjaxError);
+
+        console.log({ message })
 
         // Sign via personal_sign
         let signature;
@@ -140,6 +147,8 @@ const Web3Modal = EmberObject.extend({
             // Some providers expect reversed params order
             signature = await provider.request({ method: 'personal_sign', params: [address, message] });
         }
+
+        console.log({ signature })
 
         // Flag used wallet for telemetry/debugging if needed
         if (isRabby) {
@@ -152,7 +161,7 @@ const Web3Modal = EmberObject.extend({
 
         return [name || address, message, signature, avatar];
     },
-    
+
     async runSigningProcess(cb) {
         // Prefer injected wallets (MetaMask / Rabby) if available
         if (window.ethereum) {
