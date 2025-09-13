@@ -7,7 +7,8 @@ module OmniAuth
       option :uid_field, :eth_account
 
       uid do
-        request.params[options.uid_field.to_s]
+        # Prefer the verified address obtained from the SIWE message if available
+        @verified_address || request.params[options.uid_field.to_s]
       end
 
       info do
@@ -50,7 +51,17 @@ module OmniAuth
         end
 
         return fail!(failure_reason) if failure_reason
-
+        # At this point the signature is valid for the address inside the SIWE message.
+        # Ensure the UID is the verified address (prevent spoofing via eth_account param).
+        @verified_address = siwe_message.address
+        begin
+          # Override incoming param to keep downstream consistent
+          request.update_param('eth_account', @verified_address)
+        rescue StandardError
+          request.params['eth_account'] = @verified_address
+        end
+        # Invalidate nonce to prevent replay within the same session
+        session[:nonce] = nil
         super
       end
     end
