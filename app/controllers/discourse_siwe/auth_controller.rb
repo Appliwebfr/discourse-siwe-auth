@@ -96,8 +96,21 @@ module DiscourseSiwe
           .limit(limit)
           .offset(offset)
 
+        # Fetch group memberships for these users in one query
+        user_ids = records.map(&:user_id).uniq
+        groups_map = Hash.new { |h, k| h[k] = [] }
+        if user_ids.present?
+          ::GroupUser
+            .joins(:group)
+            .where(user_id: user_ids)
+            .select('group_users.user_id AS uid, groups.id AS gid, groups.name AS gname')
+            .find_each do |gu|
+              groups_map[gu.uid] << { id: gu.gid, name: gu.gname }
+            end
+        end
+
         data = records.map do |r|
-          row = { user_id: r.user_id, username: r.username, address: r.address }
+          row = { user_id: r.user_id, username: r.username, address: r.address, groups: groups_map[r.user_id] || [] }
           row[:email] = r.email if include_email
           row
         end
