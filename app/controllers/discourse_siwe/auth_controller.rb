@@ -103,9 +103,9 @@ module DiscourseSiwe
           ::GroupUser
             .joins(:group)
             .where(user_id: user_ids)
-            .select('group_users.user_id AS uid, groups.id AS gid, groups.name AS gname')
-            .find_each do |gu|
-              groups_map[gu.uid] << { id: gu.gid, name: gu.gname }
+            .pluck('group_users.user_id', 'groups.id', 'groups.name')
+            .each do |uid, gid, gname|
+              groups_map[uid] << { id: gid, name: gname }
             end
         end
 
