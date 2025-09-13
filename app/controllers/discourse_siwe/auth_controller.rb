@@ -25,7 +25,8 @@ module DiscourseSiwe
         end
       end
 
-      result = '0x'
+      # With frozen_string_literal, ensure a mutable string
+      result = +'0x'
       hex.chars.each_with_index do |c, i|
         if c =~ /[a-f]/
           n = digest[i].to_i(16)
