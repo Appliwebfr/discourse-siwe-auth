@@ -71,11 +71,11 @@ const Web3Modal = EmberObject.extend({
     async signMessage(account) {
         const address = account.address;
         console.log("signMessage", account)
-        let name, avatar;
+        let avatar;
         try {
-            name = await this.ethereumClient.fetchEnsName({ address });
-            if (name) {
-                avatar = await this.ethereumClient.fetchEnsAvatar({ name });
+            const ens = await this.ethereumClient.fetchEnsName({ address });
+            if (ens) {
+                avatar = await this.ethereumClient.fetchEnsAvatar({ name: ens });
             }
         } catch (error) {
             // eslint-disable-next-line no-console
@@ -101,7 +101,8 @@ const Web3Modal = EmberObject.extend({
                 account: address,
                 message: message,
             });
-            return [name || address, message, signature, avatar];
+            // Always return the address as the first element; do not leak it as a suggested name
+            return [address, message, signature, avatar];
 
         } catch (e) {
             throw e;
@@ -127,13 +128,13 @@ const Web3Modal = EmberObject.extend({
             throw new Error('No account found from injected provider');
         }
 
-        // Resolve ENS details if client available
-        let name, avatar;
+        // Resolve ENS avatar if available
+        let avatar;
         try {
             if (this.ethereumClient) {
-                name = await this.ethereumClient.fetchEnsName({ address });
-                if (name) {
-                    avatar = await this.ethereumClient.fetchEnsAvatar({ name });
+                const ens = await this.ethereumClient.fetchEnsName({ address });
+                if (ens) {
+                    avatar = await this.ethereumClient.fetchEnsAvatar({ name: ens });
                 }
             }
         } catch (e) {
@@ -178,7 +179,8 @@ const Web3Modal = EmberObject.extend({
             console.debug('Signed with MetaMask');
         }
 
-        return [name || address, message, signature, avatar];
+        // Always return the address as the first element; do not leak it as a suggested name
+        return [address, message, signature, avatar];
     },
 
     async runSigningProcess(cb) {

@@ -13,7 +13,8 @@ module OmniAuth
 
       info do
         {
-          name: request.params[options.uid_field.to_s],
+          # Do not prefill the user's display name with the address
+          name: nil,
           image: request.params['eth_avatar']
         }
       end
