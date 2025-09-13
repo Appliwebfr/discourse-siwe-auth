@@ -69,5 +69,28 @@ module DiscourseSiwe
         render json: { error: "siwe_message_failed" }, status: 500
       end
     end
+
+    def accounts
+      # Require a logged-in staff user (works with API key + Api-Username header)
+      raise Discourse::InvalidAccess.new unless current_user&.staff?
+
+      limit = (params[:limit] || 1000).to_i.clamp(1, 5000)
+      offset = (params[:offset] || 0).to_i.clamp(0, 1_000_000_000)
+
+      records = ::UserAssociatedAccount
+        .where(provider_name: 'siwe')
+        .joins("JOIN users ON users.id = user_associated_accounts.user_id")
+        .order('user_associated_accounts.id ASC')
+        .select("user_associated_accounts.user_id, users.username, users.email, user_associated_accounts.provider_uid AS address")
+        .limit(limit)
+        .offset(offset)
+
+      render json: {
+        count: records.length,
+        offset: offset,
+        limit: limit,
+        data: records.map { |r| { user_id: r.user_id, username: r.username, email: r.email, address: r.address } }
+      }
+    end
   end
 end

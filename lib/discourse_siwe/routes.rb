@@ -3,4 +3,5 @@
 DiscourseSiwe::Engine.routes.draw do
   get '/auth' => 'auth#index'
   get '/message' => 'auth#message'
+  get '/accounts' => 'auth#accounts'
 end
