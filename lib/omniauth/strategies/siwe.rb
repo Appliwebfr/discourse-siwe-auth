@@ -62,7 +62,7 @@ module OmniAuth
           request.params['eth_account'] = @verified_address
         end
         # Invalidate nonce to prevent replay within the same session
-        session[:nonce] = nil
+        #session[:nonce] = nil
         super
       end
     end
