@@ -13,9 +13,9 @@ const Web3Modal = EmberObject.extend({
     ethereumClient: null,
     async providerInit(env) {
         await this.loadScripts();
-        const Web3Modal = window.Web3Modal;
         const chains = [window.WagmiCore.mainnet, window.WagmiCore.polygon];
         const projectId = env.PROJECT_ID;
+        this.projectId = projectId;
 
         // Build wagmi config using WalletConnect connectors and try to include injected if available
         const providers = [window.Web3ModalEth.w3mProvider({ projectId })];
@@ -47,15 +47,24 @@ const Web3Modal = EmberObject.extend({
         this.ethereumClient = ethereumClient;
         window.ethereumClient = ethereumClient;
 
-        const modal = new Web3Modal({ projectId, themeVariables: { '--w3m-z-index': '99999' } }, ethereumClient);
-        this.web3Modal = modal;
-        return modal;
+        // Defer creating Web3Modal until we actually need the fallback
+        this.web3Modal = null;
+        return null;
     },
 
     async loadScripts() {
         return Promise.all([
             loadScript("/plugins/discourse-siwe/javascripts/web3bundle.min.js"),
         ]);
+    },
+
+    ensureModal() {
+        if (!this.web3Modal) {
+            const Web3Modal = window.Web3Modal;
+            const modal = new Web3Modal({ projectId: this.projectId, themeVariables: { '--w3m-z-index': '99999' } }, this.ethereumClient);
+            this.web3Modal = modal;
+        }
+        return this.web3Modal;
     },
 
 
@@ -73,12 +82,17 @@ const Web3Modal = EmberObject.extend({
             console.error(error);
         }
 
-        const { message } = await ajax('/discourse-siwe/message', {
+        const resp = await ajax('/discourse-siwe/message', {
             data: {
                 eth_account: address,
                 chain_id: await account.connector.getChainId(),
             }
         }).catch(popupAjaxError);
+
+        if (!resp || !resp.message) {
+            throw new Error('Failed to get SIWE message');
+        }
+        const { message } = resp;
 
         try {
             const signature = await (
@@ -133,9 +147,14 @@ const Web3Modal = EmberObject.extend({
         console.log({ chain_id })
 
         // Get SIWE message
-        const { message } = await ajax('/discourse-siwe/message', {
+        const resp = await ajax('/discourse-siwe/message', {
             data: { eth_account: address, chain_id }
         }).catch(popupAjaxError);
+
+        if (!resp || !resp.message) {
+            throw new Error('Failed to get SIWE message');
+        }
+        const { message } = resp;
 
         console.log({ message })
 
@@ -182,7 +201,7 @@ const Web3Modal = EmberObject.extend({
             }
         });
 
-        this.web3Modal.openModal();
+        this.ensureModal().openModal();
     },
 });
 
