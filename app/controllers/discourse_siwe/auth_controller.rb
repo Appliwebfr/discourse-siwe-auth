@@ -38,6 +38,8 @@ module DiscourseSiwe
     end
 
     def index
+      # Render the Discourse SPA shell so the Ember route can take over
+      render html: "".html_safe, layout: "application"
     end
 
     def message
