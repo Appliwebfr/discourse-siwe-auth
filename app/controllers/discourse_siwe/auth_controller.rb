@@ -76,21 +76,37 @@ module DiscourseSiwe
 
       limit = (params[:limit] || 1000).to_i.clamp(1, 5000)
       offset = (params[:offset] || 0).to_i.clamp(0, 1_000_000_000)
+      include_email = ActiveModel::Type::Boolean.new.cast(params[:include_email])
 
-      records = ::UserAssociatedAccount
-        .where(provider_name: 'siwe')
-        .joins("JOIN users ON users.id = user_associated_accounts.user_id")
-        .order('user_associated_accounts.id ASC')
-        .select("user_associated_accounts.user_id, users.username, users.email, user_associated_accounts.provider_uid AS address")
-        .limit(limit)
-        .offset(offset)
+      begin
+        base = ::UserAssociatedAccount
+          .where(provider_name: 'siwe')
+          .joins("JOIN users ON users.id = user_associated_accounts.user_id")
+          .order('user_associated_accounts.id ASC')
 
-      render json: {
-        count: records.length,
-        offset: offset,
-        limit: limit,
-        data: records.map { |r| { user_id: r.user_id, username: r.username, email: r.email, address: r.address } }
-      }
+        select_clause = [
+          'user_associated_accounts.user_id',
+          'users.username',
+          'user_associated_accounts.provider_uid AS address'
+        ]
+        select_clause << 'users.email' if include_email
+
+        records = base
+          .select(select_clause.join(', '))
+          .limit(limit)
+          .offset(offset)
+
+        data = records.map do |r|
+          row = { user_id: r.user_id, username: r.username, address: r.address }
+          row[:email] = r.email if include_email
+          row
+        end
+
+        render json: { count: data.length, offset: offset, limit: limit, data: data }
+      rescue => e
+        Rails.logger.warn("[discourse-siwe] accounts failed: #{e.class}: #{e.message}\n#{e.backtrace&.first}")
+        render json: { error: 'internal_error' }, status: 500
+      end
     end
   end
 end
