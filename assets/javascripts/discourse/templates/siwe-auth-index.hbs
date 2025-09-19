@@ -5,11 +5,29 @@
   <textarea id="eth_avatar" name="eth_avatar"></textarea>
 </form>
 <div class="eth_provider_container">
-  <div class="eth_provider_auth_button">
+  <div class="eth_provider_header">
+    <h2>{{i18n "eth_providers.title"}}</h2>
+  </div>
+  {{#if connectionError}}
+    <div class="alert alert-error eth_provider_error">
+      {{connectionError}}
+    </div>
+  {{/if}}
+  <div class="eth_provider_actions">
     {{d-button
       class="btn-primary"
-      action=(action "initAuth")
-      label="eth_providers.buttons.start"
+      action=(action "connectInjected")
+      label="eth_providers.buttons.wallet"
+      disabled=isConnecting
     }}
+    {{d-button
+      class="btn-secondary"
+      action=(action "connectWalletConnect")
+      label="eth_providers.buttons.wallet_connect"
+      disabled=isConnecting
+    }}
+  </div>
+  <div class="eth_provider_links">
+    <a href="/login">{{i18n "eth_providers.links.back_to_login"}}</a>
   </div>
 </div>

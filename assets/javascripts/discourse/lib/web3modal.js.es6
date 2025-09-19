@@ -183,27 +183,96 @@ const Web3Modal = EmberObject.extend({
         return [address, message, signature, avatar];
     },
 
-    async runSigningProcess(cb) {
-        // Prefer injected wallets (MetaMask / Rabby) if available
-        if (window.ethereum) {
-            try {
-                const res = await this.signWithInjected();
-                return cb(res);
-            } catch (e) {
-                // eslint-disable-next-line no-console
-                console.warn('Injected wallet flow failed, falling back to WalletConnect', e);
-            }
-        }
+    async connectWithWalletConnect() {
+        return new Promise((resolve, reject) => {
+            let unwatch;
+            let unsubscribeModal;
+            let finished = false;
 
-        // Fallback to WalletConnect via Web3Modal
-        window.WagmiCore.watchAccount(async (account) => {
-            if (account.isConnected && account.address) {
-                this.connected = true;
-                cb(await this.signMessage(account));
+            const cleanup = () => {
+                if (unwatch) {
+                    try {
+                        unwatch();
+                    } catch (unwatchError) {
+                        // eslint-disable-next-line no-console
+                        console.warn('Failed to unwatch WalletConnect account', unwatchError);
+                    }
+                    unwatch = null;
+                }
+
+                if (unsubscribeModal) {
+                    try {
+                        unsubscribeModal();
+                    } catch (unsubscribeError) {
+                        // eslint-disable-next-line no-console
+                        console.warn('Failed to unsubscribe WalletConnect modal watcher', unsubscribeError);
+                    }
+                    unsubscribeModal = null;
+                }
+            };
+
+            const finalize = (result, error) => {
+                if (finished) {
+                    return;
+                }
+                finished = true;
+                cleanup();
+
+                if (this.web3Modal && typeof this.web3Modal.closeModal === 'function') {
+                    try {
+                        this.web3Modal.closeModal();
+                    } catch (closeError) {
+                        // eslint-disable-next-line no-console
+                        console.warn('Failed to close WalletConnect modal', closeError);
+                    }
+                }
+
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(result);
+                }
+            };
+
+            try {
+                unwatch = window.WagmiCore.watchAccount(async (account) => {
+                    if (account.isConnected && account.address) {
+                        try {
+                            const signed = await this.signMessage(account);
+                            finalize(signed, null);
+                        } catch (signError) {
+                            finalize(null, signError);
+                        }
+                    }
+                });
+            } catch (e) {
+                finalize(null, e);
+                return;
+            }
+
+            const modal = this.ensureModal();
+
+            if (modal && typeof modal.subscribeModal === 'function') {
+                try {
+                    unsubscribeModal = modal.subscribeModal((state) => {
+                        if (!state.open) {
+                            const error = new Error('WalletConnect modal closed');
+                            error.canceled = true;
+                            finalize(null, error);
+                        }
+                    });
+                } catch (subscribeError) {
+                    // eslint-disable-next-line no-console
+                    console.warn('Failed to subscribe to WalletConnect modal state', subscribeError);
+                }
+            }
+
+            try {
+                modal.openModal();
+            } catch (e) {
+                finalize(null, e);
             }
         });
-
-        this.ensureModal().openModal();
     },
 });
 

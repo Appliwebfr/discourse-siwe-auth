@@ -15,4 +15,10 @@ en:
     eth_providers:
       title: "Sign-in with Ethereum"
       buttons:
-        start: "Sign-in with Ethereum"
+        wallet: "Browser wallet (MetaMask, Rabby)"
+        wallet_connect: "WalletConnect"
+      links:
+        back_to_login: "Back to regular login"
+      errors:
+        connection_failed: "We couldn't connect to your wallet. Try again or choose a different option."
+        initialization_failed: "Ethereum signing is temporarily unavailable. Please try again later."
