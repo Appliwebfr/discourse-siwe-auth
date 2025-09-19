@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# name: discourse-siwe
+# name: discourse-siwe-auth
 # about: A discourse plugin to enable users to authenticate via Sign In with Ethereum
 # version: 0.1.2
 
@@ -58,9 +58,11 @@ after_initialize do
     ../app/controllers/discourse_siwe/auth_controller.rb
   ].each { |path| load File.expand_path(path, __FILE__) }
 
-  register_api_key_scope(:discourse_siwe_accounts) do |scope|
-    scope.require_user!
-    scope.allow_actions('discourse_siwe/auth', %i[accounts])
+  if respond_to?(:register_api_key_scope)
+    register_api_key_scope(:discourse_siwe_accounts) do |scope|
+      scope.require_user!
+      scope.allow_actions('discourse_siwe/auth', %i[accounts])
+    end
   end
 
   Discourse::Application.routes.prepend do
