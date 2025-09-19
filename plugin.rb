@@ -58,6 +58,11 @@ after_initialize do
     ../app/controllers/discourse_siwe/auth_controller.rb
   ].each { |path| load File.expand_path(path, __FILE__) }
 
+  register_api_key_scope(:discourse_siwe_accounts) do |scope|
+    scope.require_user!
+    scope.allow_actions('discourse_siwe/auth', %i[accounts])
+  end
+
   Discourse::Application.routes.prepend do
     mount ::DiscourseSiwe::Engine, at: '/discourse-siwe'
   end
