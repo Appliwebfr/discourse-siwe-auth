@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'siwe'
+require 'uri'
 module DiscourseSiwe
   class AuthController < ::ApplicationController
     private
@@ -38,6 +39,25 @@ module DiscourseSiwe
       result
     end
 
+    def siwe_domain
+      @siwe_domain ||= begin
+        base_uri = URI.parse(Discourse.base_url)
+        host = base_uri.host
+        port = base_uri.port
+        default_port = base_uri.scheme == 'https' ? 443 : 80
+
+        if host.present?
+          if port && port != default_port
+            "#{host}:#{port}"
+          else
+            host
+          end
+        end
+      rescue URI::InvalidURIError
+        nil
+      end
+    end
+
     public
     def index
       # Render the Discourse SPA shell so the Ember route can take over
@@ -50,16 +70,20 @@ module DiscourseSiwe
         raise Discourse::InvalidParameters.new(:eth_account) if eth_account.blank?
 
         # Normalize values
-        domain = Discourse.base_url.dup
-        domain.slice!("#{Discourse.base_protocol}://")
+        domain = siwe_domain
+        raise Discourse::InvalidParameters.new(:domain) if domain.blank?
+
         chain_id = params[:chain_id].presence || "1"
 
         address = to_checksum_address(eth_account)
+        issued_at = (Time.zone || Time).now.utc
+        ttl_seconds = 5 * 60
         message = Siwe::Message.new(domain, address, Discourse.base_url, "1", {
-          issued_at: Time.now.utc.iso8601,
+          issued_at: issued_at.iso8601,
           statement: SiteSetting.siwe_statement,
           nonce: Siwe::Util.generate_nonce,
           chain_id: chain_id.to_s,
+          expiration_time: (issued_at + ttl_seconds).iso8601,
         })
         session[:nonce] = message.nonce
 

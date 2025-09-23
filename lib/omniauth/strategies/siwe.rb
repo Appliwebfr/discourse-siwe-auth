@@ -1,3 +1,5 @@
+require 'uri'
+
 module OmniAuth
   module Strategies
     class Siwe
@@ -25,19 +27,31 @@ module OmniAuth
       end
 
       def callback_phase
-        eth_message_crlf = request.params['eth_message']
-        eth_message = eth_message_crlf.encode(eth_message_crlf.encoding, universal_newline: true)
+        eth_message_raw = request.params['eth_message']
         eth_signature = request.params['eth_signature']
-        siwe_message = ::Siwe::Message.from_message(eth_message)
 
-        domain = Discourse.base_url
-        domain.slice!("#{Discourse.base_protocol}://")
-        if siwe_message.domain != domain
-          return fail!("Invalid domain")
+        return fail!(:missing_message) if eth_message_raw.blank?
+        return fail!(:missing_signature) if eth_signature.blank?
+
+        eth_message = eth_message_raw.encode(eth_message_raw.encoding, universal_newline: true)
+
+        begin
+          siwe_message = ::Siwe::Message.from_message(eth_message)
+        rescue StandardError
+          return fail!(:invalid_message)
         end
 
-        if siwe_message.nonce != session[:nonce]
-          return fail!("Invalid nonce")
+        unless valid_domain?(siwe_message.domain)
+          return fail!(:invalid_domain)
+        end
+
+        unless valid_uri?(siwe_message.uri)
+          return fail!(:invalid_uri)
+        end
+
+        expected_nonce = session.delete(:nonce)
+        if expected_nonce.blank? || siwe_message.nonce != expected_nonce
+          return fail!(:invalid_nonce)
         end
 
         failure_reason = nil
@@ -62,8 +76,49 @@ module OmniAuth
           request.params['eth_account'] = @verified_address
         end
         # Invalidate nonce to prevent replay within the same session
-        #session[:nonce] = nil
         super
+      end
+
+      private
+
+      def valid_domain?(domain)
+        expected = siwe_domain
+        return false if expected.blank? || domain.blank?
+
+        domain.casecmp(expected).zero?
+      end
+
+      def valid_uri?(uri_string)
+        return false if uri_string.blank?
+
+        message_uri = URI.parse(uri_string)
+        base_uri = URI.parse(Discourse.base_url)
+
+        same_host = message_uri.host == base_uri.host
+        same_scheme = message_uri.scheme == base_uri.scheme
+        same_port = message_uri.port == base_uri.port
+        path_allowed = base_uri.path.blank? || message_uri.path.start_with?(base_uri.path)
+
+        same_host && same_scheme && same_port && path_allowed
+      rescue URI::InvalidURIError
+        false
+      end
+
+      def siwe_domain
+        @siwe_domain ||= begin
+          base_uri = URI.parse(Discourse.base_url)
+          host = base_uri.host
+          port = base_uri.port
+          default_port = base_uri.scheme == 'https' ? 443 : 80
+
+          if port && port != default_port
+            "#{host}:#{port}"
+          else
+            host
+          end
+        rescue URI::InvalidURIError
+          nil
+        end
       end
     end
   end
