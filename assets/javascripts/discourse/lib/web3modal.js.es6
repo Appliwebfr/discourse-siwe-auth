@@ -10,6 +10,26 @@ import getURL from "discourse-common/lib/get-url";
 
 const WEB3_BUNDLE_PATH = getURL("/plugins/discourse-siwe-auth/javascripts/web3bundle.min.js");
 
+const userRejected = (error) => {
+    if (!error) {
+        return false;
+    }
+
+    if (error.canceled) {
+        return true;
+    }
+
+    const code = error.code;
+
+    if (code === 4001 || code === "4001" || code === "ACTION_REJECTED") {
+        return true;
+    }
+
+    const message = (error.message || "").toLowerCase();
+
+    return message.includes("user rejected") || message.includes("rejected the request");
+};
+
 
 const Web3Modal = EmberObject.extend({
     web3Modal: null,
@@ -163,10 +183,20 @@ const Web3Modal = EmberObject.extend({
         // Sign via personal_sign
         let signature;
         try {
-            signature = await provider.request({ method: 'personal_sign', params: [message, address] });
+            signature = await provider.request({
+                method: 'personal_sign',
+                params: [message, address]
+            });
         } catch (e) {
+            if (userRejected(e)) {
+                throw e;
+            }
+
             // Some providers expect reversed params order
-            signature = await provider.request({ method: 'personal_sign', params: [address, message] });
+            signature = await provider.request({
+                method: 'personal_sign',
+                params: [address, message]
+            });
         }
 
         console.log({ signature })
