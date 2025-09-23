@@ -62,10 +62,32 @@ module DiscourseSiwe
       end
     end
 
+    def resolved_destination_path
+      destination = session.delete(:destination_url).to_s
+
+      return default_redirect_path if destination.blank?
+
+      return path(destination) if destination.start_with?('/')
+
+      return destination if destination.start_with?(Discourse.base_url)
+
+      default_redirect_path
+    rescue StandardError
+      default_redirect_path
+    end
+
+    def default_redirect_path
+      path('/')
+    end
+
     public
     def index
-      # Render the Discourse SPA shell so the Ember route can take over
-      render html: "".html_safe, layout: "application"
+      if current_user
+        redirect_to resolved_destination_path
+      else
+        # Render the Discourse SPA shell so the Ember route can take over
+        render html: "".html_safe, layout: "application"
+      end
     end
 
     def message
