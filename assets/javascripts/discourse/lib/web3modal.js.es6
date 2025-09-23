@@ -6,6 +6,9 @@ import {
     popupAjaxError
 } from "discourse/lib/ajax-error";
 import loadScript from "discourse/lib/load-script";
+import getURL from "discourse-common/lib/get-url";
+
+const WEB3_BUNDLE_PATH = getURL("/plugins/discourse-siwe-auth/javascripts/web3bundle.min.js");
 
 
 const Web3Modal = EmberObject.extend({
@@ -53,9 +56,7 @@ const Web3Modal = EmberObject.extend({
     },
 
     async loadScripts() {
-        return Promise.all([
-            loadScript("/plugins/discourse-siwe/javascripts/web3bundle.min.js"),
-        ]);
+        return Promise.all([loadScript(WEB3_BUNDLE_PATH)]);
     },
 
     ensureModal() {
