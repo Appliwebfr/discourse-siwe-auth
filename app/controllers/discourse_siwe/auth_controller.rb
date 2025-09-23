@@ -4,10 +4,10 @@ require 'siwe'
 require 'uri'
 module DiscourseSiwe
   class AuthController < ::ApplicationController
-    skip_before_action :ensure_logged_in
-    skip_before_action :redirect_to_login_if_required
-    skip_before_action :check_xhr
-    skip_before_action :verify_authenticity_token, only: [:message]
+    skip_before_action :ensure_logged_in, raise: false
+    skip_before_action :redirect_to_login_if_required, raise: false
+    skip_before_action :check_xhr, raise: false
+    skip_before_action :verify_authenticity_token, only: [:message], raise: false
     private
     def to_checksum_address(addr)
       return addr if addr.blank?
