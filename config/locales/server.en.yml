@@ -1,0 +1,6 @@
+en:
+  api:
+    key_scopes:
+      discourse_siwe_accounts:
+        label: "SIWE accounts"
+        description: "Allow requests to GET /discourse-siwe/accounts.json"
