@@ -1,4 +1,5 @@
 import Controller from "@ember/controller";
+import { action } from "@ember/object";
 import I18n from "I18n";
 import { withPluginApi } from "discourse/lib/plugin-api";
 import Web3Modal from "../lib/web3modal";
@@ -81,56 +82,54 @@ export default Controller.extend({
     return this.provider;
   },
 
-  actions: {
-    async connectInjected() {
-      const provider = await this.ensureProvider();
-      if (!provider) {
-        return;
+  connectInjected: action(async function () {
+    const provider = await this.ensureProvider();
+    if (!provider) {
+      return;
+    }
+
+    this.setProperties({ isConnecting: true, connectionError: null });
+
+    try {
+      const [account, message, signature, avatar] = await provider.signWithInjected();
+      this.verifySignature(account, message, signature, avatar);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(e);
+      if (!this.userCanceled(e)) {
+        this.set(
+          "connectionError",
+          I18n.t("eth_providers.errors.connection_failed")
+        );
       }
+    } finally {
+      this.set("isConnecting", false);
+    }
+  }),
 
-      this.setProperties({ isConnecting: true, connectionError: null });
+  connectWalletConnect: action(async function () {
+    const provider = await this.ensureProvider();
+    if (!provider) {
+      return;
+    }
 
-      try {
-        const [account, message, signature, avatar] = await provider.signWithInjected();
-        this.verifySignature(account, message, signature, avatar);
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error(e);
-        if (!this.userCanceled(e)) {
-          this.set(
-            "connectionError",
-            I18n.t("eth_providers.errors.connection_failed")
-          );
-        }
-      } finally {
-        this.set("isConnecting", false);
+    this.setProperties({ isConnecting: true, connectionError: null });
+
+    try {
+      const [account, message, signature, avatar] =
+        await provider.connectWithWalletConnect();
+      this.verifySignature(account, message, signature, avatar);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(e);
+      if (!this.userCanceled(e)) {
+        this.set(
+          "connectionError",
+          I18n.t("eth_providers.errors.connection_failed")
+        );
       }
-    },
-
-    async connectWalletConnect() {
-      const provider = await this.ensureProvider();
-      if (!provider) {
-        return;
-      }
-
-      this.setProperties({ isConnecting: true, connectionError: null });
-
-      try {
-        const [account, message, signature, avatar] =
-          await provider.connectWithWalletConnect();
-        this.verifySignature(account, message, signature, avatar);
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error(e);
-        if (!this.userCanceled(e)) {
-          this.set(
-            "connectionError",
-            I18n.t("eth_providers.errors.connection_failed")
-          );
-        }
-      } finally {
-        this.set("isConnecting", false);
-      }
-    },
-  },
+    } finally {
+      this.set("isConnecting", false);
+    }
+  }),
 });

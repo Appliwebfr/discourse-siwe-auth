@@ -8,23 +8,23 @@
   <div class="eth_provider_header">
     <h2>{{i18n "eth_providers.title"}}</h2>
   </div>
-  {{#if connectionError}}
+  {{#if this.connectionError}}
     <div class="alert alert-error eth_provider_error">
-      {{connectionError}}
+      {{this.connectionError}}
     </div>
   {{/if}}
   <div class="eth_provider_actions">
     {{d-button
       class="btn-primary"
-      action=(action "connectInjected")
+      action=this.connectInjected
       label="eth_providers.buttons.wallet"
-      disabled=isConnecting
+      disabled=this.isConnecting
     }}
     {{d-button
       class="btn-secondary"
-      action=(action "connectWalletConnect")
+      action=this.connectWalletConnect
       label="eth_providers.buttons.wallet_connect"
-      disabled=isConnecting
+      disabled=this.isConnecting
     }}
   </div>
   <div class="eth_provider_links">
