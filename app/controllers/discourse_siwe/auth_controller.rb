@@ -82,9 +82,13 @@ module DiscourseSiwe
 
     public
     def index
-      if current_user
+      flow_state = session[:siwe_flow_state]
+
+      if current_user && flow_state != 'prompt'
+        session.delete(:siwe_flow_state)
         redirect_to resolved_destination_path
       else
+        # Preserve prompt state so linking flows continue to work until completion
         # Render the Discourse SPA shell so the Ember route can take over
         render html: "".html_safe, layout: "application"
       end

@@ -22,6 +22,7 @@ module OmniAuth
       end
 
       def request_phase
+        session[:siwe_flow_state] = 'prompt'
         query_string = env['QUERY_STRING']
         redirect "/discourse-siwe/auth?#{query_string}"
       end
@@ -76,6 +77,7 @@ module OmniAuth
           request.params['eth_account'] = @verified_address
         end
         # Invalidate nonce to prevent replay within the same session
+        session[:siwe_flow_state] = 'complete'
         super
       end
 
